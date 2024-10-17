@@ -1,7 +1,6 @@
 'use client'
 
-import { log } from 'console'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 class GetKBRsp {
   code!: number
@@ -15,11 +14,20 @@ class GetDBRsp {
   dbs!: string[]
 }
 
+class QueryRsp {
+  code!: number
+  msg!: string
+  text!: string
+}
+
 export default function Page() {
   const [kbs, setKBs] = useState<string[]>([])  // KB 列表
   const [dbs, setDBs] = useState<string[]>([])  // DB 列表
   const [selectedKB, setSelectedKB] = useState(''); // 所选 KB
   const [selectedDB, setSelectedDB] = useState(''); // 所选 KB
+  const [method, setMethod] = useState('local'); // Method
+  const [text, setText] = useState(''); // Text
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     async function fetchKBs() {
@@ -31,8 +39,11 @@ export default function Page() {
         if (res.ok) {
           let data: GetKBRsp = await res.json()
           setKBs(data.kbs)
+          if (data.kbs.length > 0) {
+            setSelectedKB(data.kbs[0])
+          }
         } else {
-          console.error('Failed to fetch posts.')
+          console.error('Failed to fetch kbs.')
         }
       } catch (error) {
         console.error('Error fetching kbs:', error)
@@ -40,6 +51,12 @@ export default function Page() {
     }
     fetchKBs()
   }, [])
+
+  useEffect(() => {
+    if (selectedKB) {
+      fetchDBs();
+    }
+  }, [selectedKB]);
 
   async function fetchDBs() {
     try {
@@ -51,46 +68,100 @@ export default function Page() {
         body: JSON.stringify({
           kb: selectedKB,
         })
-      })
+      });
 
       if (res.ok) {
-        let data: GetDBRsp = await res.json()
-        setDBs(data.dbs)
+        let data: GetDBRsp = await res.json();
+        setDBs(data.dbs);
+        if (data.dbs.length > 0) {
+          setSelectedDB(data.dbs[0])
+          // 如果立即使用 selectedDB 无法获取最新值（useState 特性）
+        }
       } else {
-        console.error('Failed to fetch posts.')
+        console.error('Failed to fetch dbs.');
       }
     } catch (error) {
-      console.error('Error fetching dbs:', error)
+      console.error('Error fetching dbs:', error);
+    }
+  }
+
+
+  async function fetchQuery() {
+    if (textareaRef.current === null) {
+      return
+    }
+
+    const query = textareaRef.current.value;
+    console.log('====================================');
+    console.log(selectedKB, selectedDB, method, query);
+    console.log('====================================');
+    try {
+      let res = await fetch('http://localhost:8080/api/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          kb: selectedKB,
+          db: selectedDB,
+          method: method,
+          text: query
+        })
+      });
+
+      if (res.ok) {
+        let data: QueryRsp = await res.json();
+        textareaRef.current.value = data.text
+        console.log('====================================');
+        console.log(data)
+        console.log('====================================');
+      } else {
+        console.error('Failed to fetch query.');
+      }
+    } catch (error) {
+      console.error('Error fetching query:', error);
     }
   }
 
   function handleSelectKB(event: React.ChangeEvent<HTMLSelectElement>) {
     setSelectedKB(event.target.value)
-    fetchDBs()
   }
 
   function handleSelectDB(event: React.ChangeEvent<HTMLSelectElement>) {
     setSelectedDB(event.target.value)
   }
 
-  return (
-    <div className="flex">
-      <div className="w-full h-full flex flex-col mx-10 my-10 gap-10">
-        <div className="w-full flex flex-row gap-2">
+  function handleSelectMethod(event: React.ChangeEvent<HTMLSelectElement>) {
+    setMethod(event.target.value)
+  }
 
-          <div className="w-full flex flex-col">
-            <label className="inline-block whitespace-nowrap">
-              KB 知识库
+  function handleChangeText(event: React.FormEvent<HTMLTextAreaElement>) {
+    if (textareaRef.current !== null) {
+      textareaRef.current.value = event.currentTarget.value
+    }
+  }
+
+  return (
+    <div className="w-full flex flex-col m-20 gap-4">
+      <div className="flex flex-col">
+        <label className="inline-block whitespace-nowrap text-2xl">
+          Select
+        </label>
+        <div className="flex flex-col m-4 gap-x-6 gap-y-4">
+          <div className="flex flex-row">
+            <label className="flex items-center whitespace-nowrap text-lg">
+              KB 知识库：
             </label>
-            <div>
+            <div className="flex flex-grow max-w-xs">
               {kbs.length === 0 ?
-                <select className="w-full h-10" disabled>
-                  无
+                <select className="w-full h-8 px-2 rounded-md text-red-500" disabled>
+                  <option>无可用 KB</option>
                 </select>
                 :
-                <select className="w-full h-10" onChange={handleSelectKB}>
+                <select className="w-full h-8 px-2 rounded-md text-black"
+                  onChange={handleSelectKB}>
                   {kbs.map((kb: string) => (
-                    <option className="" key={kb} value={kb}>
+                    <option className="h-6" key={kb} value={kb}>
                       {kb}
                     </option>
                   ))}
@@ -98,31 +169,65 @@ export default function Page() {
               }
             </div>
           </div>
-
-          <div className="w-fit flex flex-col">
-            <label className="inline-block whitespace-nowrap">
-              操作
+          <div className="flex flex-row">
+            <label className="flex items-center whitespace-nowrap text-lg">
+              DB 数据库：
             </label>
+            <div className="flex flex-grow max-w-xs">
+              {dbs.length === 0 ?
+                <select className="w-full h-8 px-2 rounded-md text-red-500" disabled>
+                  <option>无可用 DB</option>
+                </select>
+                :
+                <select className="w-full h-8 px-2 rounded-md text-black"
+                  onChange={handleSelectDB}>
+                  {dbs.map((db: string) => (
+                    <option className="" key={db} value={db}>
+                      {db}
+                    </option>
+                  ))}
+                </select>
+              }
+            </div>
           </div>
-        </div>
+        </div >
+      </div>
 
-        <div className="w-full flex flex-col gap-2">
-          <label className="inline-block whitespace-nowrap">
-            DB 数据库
-          </label>
-          {dbs.length === 0 ?
-            <select className="w-full h-10" disabled>
-              <option>无可用 DB</option>
+      <div className="flex flex-grow flex-col">
+        <label className="inline-block whitespace-nowrap text-2xl">
+          Query
+        </label>
+        <div className="flex flex-grow flex-col m-4 p-4 gap-4 border-2 border-white rounded-md">
+          <div className="h-8 flex flex-row gap-2">
+            <label className="flex items-center justify-center whitespace-nowrap">
+              Method:
+            </label>
+            <select className="px-2 border-solid rounded-md text-black" onChange={handleSelectMethod}>
+              <option key="local">Local</option>
+              <option key="global">Global</option>
             </select>
-            :
-            <select className="w-full h-10" onChange={handleSelectDB}>
-              {dbs.map((db: string) => (
-                <option className="" key={db} value={db}>
-                  {db}
-                </option>
-              ))}
-            </select>
-          }
+          </div>
+          <div className="w-full flex flex-row gap-4">
+            <textarea
+              ref={textareaRef}
+              className="w-full px-4 py-2 text-lg text-black rounded-md"
+              rows={2}
+              onChange={handleChangeText}
+              placeholder={`${method === "Local" ? "What are the top themes in this story?" : "Who is Scrooge, and what are his main relationships?"}`}>
+
+            </textarea>
+            <button
+              className="inline-block whitespace-nowrap px-4 py-2 rounded-md bg-blue-400 hover:bg-blue-600"
+              onClick={fetchQuery}
+            >
+              发 送
+            </button>
+          </div>
+          <div className="w-full flex flex-grow gap-2">
+            <textarea className="w-full rounded-md resize-none shadow outline">
+
+            </textarea>
+          </div>
         </div>
       </div>
     </div >
