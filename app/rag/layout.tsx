@@ -6,8 +6,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-      <div>
-        {children}
-      </div>
+    <div>
+      {children}
+    </div>
   );
 }
