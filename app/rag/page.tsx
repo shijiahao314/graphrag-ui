@@ -25,7 +25,7 @@ export default function Page() {
   const [dbs, setDBs] = useState<string[]>([])  // DB 列表
   const [selectedKB, setSelectedKB] = useState(''); // 所选 KB
   const [selectedDB, setSelectedDB] = useState(''); // 所选 KB
-  const [method, setMethod] = useState('local'); // Method
+  const [method, setMethod] = useState('Local'); // Method
   const [text, setText] = useState(''); // Text
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -92,6 +92,10 @@ export default function Page() {
     }
 
     const query = textareaRef.current.value;
+    if (query === '') {
+      return
+    }
+
     console.log('====================================');
     console.log(selectedKB, selectedDB, method, query);
     console.log('====================================');
@@ -111,7 +115,7 @@ export default function Page() {
 
       if (res.ok) {
         let data: QueryRsp = await res.json();
-        textareaRef.current.value = data.text
+        textareaRef.current.value = data.text;
         console.log('====================================');
         console.log(data)
         console.log('====================================');
@@ -143,90 +147,93 @@ export default function Page() {
 
   return (
     <div className="w-full flex flex-col m-20 gap-4">
-      <div className="flex flex-col">
-        <label className="inline-block whitespace-nowrap text-2xl">
-          Select
-        </label>
-        <div className="flex flex-col m-4 gap-x-6 gap-y-4">
-          <div className="flex flex-row">
-            <label className="flex items-center whitespace-nowrap text-lg">
-              KB 知识库：
-            </label>
-            <div className="flex flex-grow max-w-xs">
-              {kbs.length === 0 ?
-                <select className="w-full h-8 px-2 rounded-md text-red-500" disabled>
-                  <option>无可用 KB</option>
-                </select>
-                :
-                <select className="w-full h-8 px-2 rounded-md text-black"
-                  onChange={handleSelectKB}>
-                  {kbs.map((kb: string) => (
-                    <option className="h-6" key={kb} value={kb}>
-                      {kb}
-                    </option>
-                  ))}
-                </select>
-              }
+      <label className="text-4xl">GraphRAG UI</label>
+      <div className="flex flex-grow flex-col m-4">
+        <div className="flex flex-col">
+          <label className="inline-block whitespace-nowrap text-2xl">
+            Select
+          </label>
+          <div className="flex flex-col m-4 gap-x-6 gap-y-4">
+            <div className="flex flex-row">
+              <label className="flex items-center whitespace-nowrap text-lg">
+                KB 知识库：
+              </label>
+              <div className="flex flex-grow max-w-xs">
+                {kbs.length === 0 ?
+                  <select className="w-full h-8 px-2 rounded-md text-red-500" disabled>
+                    <option>无可用 KB</option>
+                  </select>
+                  :
+                  <select className="w-full h-8 px-2 rounded-md text-black"
+                    onChange={handleSelectKB}>
+                    {kbs.map((kb: string) => (
+                      <option className="h-6" key={kb} value={kb}>
+                        {kb}
+                      </option>
+                    ))}
+                  </select>
+                }
+              </div>
             </div>
-          </div>
-          <div className="flex flex-row">
-            <label className="flex items-center whitespace-nowrap text-lg">
-              DB 数据库：
-            </label>
-            <div className="flex flex-grow max-w-xs">
-              {dbs.length === 0 ?
-                <select className="w-full h-8 px-2 rounded-md text-red-500" disabled>
-                  <option>无可用 DB</option>
-                </select>
-                :
-                <select className="w-full h-8 px-2 rounded-md text-black"
-                  onChange={handleSelectDB}>
-                  {dbs.map((db: string) => (
-                    <option className="" key={db} value={db}>
-                      {db}
-                    </option>
-                  ))}
-                </select>
-              }
+            <div className="flex flex-row">
+              <label className="flex items-center whitespace-nowrap text-lg">
+                DB 数据库：
+              </label>
+              <div className="flex flex-grow max-w-xs">
+                {dbs.length === 0 ?
+                  <select className="w-full h-8 px-2 rounded-md text-red-500" disabled>
+                    <option>无可用 DB</option>
+                  </select>
+                  :
+                  <select className="w-full h-8 px-2 rounded-md text-black"
+                    onChange={handleSelectDB}>
+                    {dbs.map((db: string) => (
+                      <option className="" key={db} value={db}>
+                        {db}
+                      </option>
+                    ))}
+                  </select>
+                }
+              </div>
             </div>
-          </div>
-        </div >
-      </div>
+          </div >
+        </div>
 
-      <div className="flex flex-grow flex-col">
-        <label className="inline-block whitespace-nowrap text-2xl">
-          Query
-        </label>
-        <div className="flex flex-grow flex-col m-4 p-4 gap-4 border-2 border-white rounded-md">
-          <div className="h-8 flex flex-row gap-2">
-            <label className="flex items-center justify-center whitespace-nowrap">
-              Method:
-            </label>
-            <select className="px-2 border-solid rounded-md text-black" onChange={handleSelectMethod}>
-              <option key="local">Local</option>
-              <option key="global">Global</option>
-            </select>
-          </div>
-          <div className="w-full flex flex-row gap-4">
-            <textarea
-              ref={textareaRef}
-              className="w-full px-4 py-2 text-lg text-black rounded-md"
-              rows={2}
-              onChange={handleChangeText}
-              placeholder={`${method === "Local" ? "What are the top themes in this story?" : "Who is Scrooge, and what are his main relationships?"}`}>
+        <div className="flex flex-grow flex-col">
+          <label className="inline-block whitespace-nowrap text-2xl">
+            Query
+          </label>
+          <div className="flex flex-grow flex-col m-4 p-4 gap-4 border-2 border-white rounded-md">
+            <div className="h-8 flex flex-row gap-2">
+              <label className="flex items-center justify-center whitespace-nowrap">
+                Method:
+              </label>
+              <select className="px-2 border-solid rounded-md text-black" onChange={handleSelectMethod}>
+                <option key="local">Local</option>
+                <option key="global">Global</option>
+              </select>
+            </div>
+            <div className="w-full flex flex-row gap-4">
+              <textarea
+                ref={textareaRef}
+                className="w-full px-4 py-2 text-lg text-black rounded-md"
+                rows={2}
+                onChange={handleChangeText}
+                placeholder={`${method === "Local" ? "What are the top themes in this story?" : "Who is Scrooge, and what are his main relationships?"}`}>
 
-            </textarea>
-            <button
-              className="inline-block whitespace-nowrap px-4 py-2 rounded-md bg-blue-400 hover:bg-blue-600"
-              onClick={fetchQuery}
-            >
-              发 送
-            </button>
-          </div>
-          <div className="w-full flex flex-grow gap-2">
-            <textarea className="w-full rounded-md resize-none shadow outline">
+              </textarea>
+              <button
+                className="inline-block whitespace-nowrap px-4 py-2 rounded-md bg-blue-400 hover:bg-blue-600"
+                onClick={fetchQuery}
+              >
+                发 送
+              </button>
+            </div>
+            <div className="w-full flex flex-grow gap-2">
+              <textarea className="w-full rounded-md resize-none shadow outline">
 
-            </textarea>
+              </textarea>
+            </div>
           </div>
         </div>
       </div>
