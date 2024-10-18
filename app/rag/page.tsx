@@ -25,9 +25,10 @@ export default function Page() {
   const [dbs, setDBs] = useState<string[]>([])  // DB 列表
   const [selectedKB, setSelectedKB] = useState(''); // 所选 KB
   const [selectedDB, setSelectedDB] = useState(''); // 所选 KB
-  const [method, setMethod] = useState('Local'); // Method
-  const [text, setText] = useState(''); // Text
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [method, setMethod] = useState('local'); // Method
+
+  const queryArea = useRef<HTMLTextAreaElement>(null); // Query
+  const ansArea = useRef<HTMLTextAreaElement>(null); // Answer
 
   useEffect(() => {
     async function fetchKBs() {
@@ -87,11 +88,11 @@ export default function Page() {
 
 
   async function fetchQuery() {
-    if (textareaRef.current === null) {
+    if (queryArea.current === null) {
       return
     }
 
-    const query = textareaRef.current.value;
+    const query = queryArea.current.value;
     if (query === '') {
       return
     }
@@ -100,6 +101,9 @@ export default function Page() {
     console.log(selectedKB, selectedDB, method, query);
     console.log('====================================');
     try {
+      if (ansArea.current !== null) {
+        ansArea.current.value = "等待回复中，本地模型第一次对话预计需要 30 秒，后续对话需要 10 秒左右"
+      }
       let res = await fetch('http://localhost:8080/api/query', {
         method: 'POST',
         headers: {
@@ -115,15 +119,23 @@ export default function Page() {
 
       if (res.ok) {
         let data: QueryRsp = await res.json();
-        textareaRef.current.value = data.text;
+        if (ansArea.current !== null) {
+          ansArea.current.value = data.text;
+        }
         console.log('====================================');
         console.log(data)
         console.log('====================================');
       } else {
         console.error('Failed to fetch query.');
+        if (ansArea.current !== null) {
+          ansArea.current.value = "Failed to fetch query.";
+        }
       }
     } catch (error) {
       console.error('Error fetching query:', error);
+      if (ansArea.current !== null) {
+        ansArea.current.value = "Error fetching query:" + error;
+      }
     }
   }
 
@@ -140,13 +152,13 @@ export default function Page() {
   }
 
   function handleChangeText(event: React.FormEvent<HTMLTextAreaElement>) {
-    if (textareaRef.current !== null) {
-      textareaRef.current.value = event.currentTarget.value
+    if (queryArea.current !== null) {
+      queryArea.current.value = event.currentTarget.value
     }
   }
 
   return (
-    <div className="w-full flex flex-col m-20 gap-4">
+    <div className="w-full flex flex-col mt-20 mb-10 mx-20 gap-4">
       <label className="text-4xl">GraphRAG UI</label>
       <div className="flex flex-grow flex-col m-4">
         <div className="flex flex-col">
@@ -209,18 +221,17 @@ export default function Page() {
                 Method:
               </label>
               <select className="px-2 border-solid rounded-md text-black" onChange={handleSelectMethod}>
-                <option key="local">Local</option>
-                <option key="global">Global</option>
+                <option key="local">local</option>
+                <option key="global">global</option>
               </select>
             </div>
             <div className="w-full flex flex-row gap-4">
               <textarea
-                ref={textareaRef}
-                className="w-full px-4 py-2 text-lg text-black rounded-md"
-                rows={2}
+                ref={queryArea}
+                className="w-full px-4 py-2 text-xl text-black rounded-md resize-none"
+                rows={3}
                 onChange={handleChangeText}
-                placeholder={`${method === "Local" ? "What are the top themes in this story?" : "Who is Scrooge, and what are his main relationships?"}`}>
-
+                placeholder={`${method === "local" ? "What are the top themes in this story?" : "Who is Scrooge, and what are his main relationships?"}`}>
               </textarea>
               <button
                 className="inline-block whitespace-nowrap px-4 py-2 rounded-md bg-blue-400 hover:bg-blue-600"
@@ -230,8 +241,9 @@ export default function Page() {
               </button>
             </div>
             <div className="w-full flex flex-grow gap-2">
-              <textarea className="w-full rounded-md resize-none shadow outline">
-
+              <textarea
+                ref={ansArea}
+                className="w-full px-4 py-2 text-xl text-black rounded-md resize-none disabled:bg-blue-200" disabled>
               </textarea>
             </div>
           </div>
